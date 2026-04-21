@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Home Assistant Core Integration Issues
+    url: https://github.com/home-assistant/core/issues
+    about: If the issue is specific to the Home Assistant integration rather than the Python library, open it in Home Assistant Core once the integration is upstreamed.
