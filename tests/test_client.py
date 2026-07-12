@@ -182,7 +182,7 @@ async def test_async_get_share_parses_payload() -> None:
 async def test_async_get_share_does_not_log_token_fragments(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    session = _FakeSession(_FakeResponse(200, {"data": {"id": 101}}))
+    session = _FakeSession(_FakeResponse(200, {"data": {"id": 101, "vehicles": []}}))
     client = ScorpionTrackClient(session=session, token=SECRET_TOKEN)
     caplog.set_level(logging.DEBUG)
 
@@ -307,6 +307,7 @@ async def test_no_active_share_remains_unavailable_without_warning_logs(
         {},
         {"data": []},
         {"data": {}},
+        {"data": {"id": 101}},
         {"data": {"id": SECRET_TOKEN}},
         {"data": {"id": 101, "user": [SECRET_TOKEN]}},
         {"data": {"id": 101, "vehicles": {"bad": SECRET_TOKEN}}},

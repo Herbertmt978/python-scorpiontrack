@@ -140,7 +140,9 @@ class ScorpionTrackClient:
             or None
         )
 
-        vehicles_data = share_data.get("vehicles", [])
+        if "vehicles" not in share_data:
+            raise KeyError("vehicles")
+        vehicles_data = share_data["vehicles"]
         if not isinstance(vehicles_data, list):
             raise TypeError("Share vehicles is not a list")
         vehicles: list[ScorpionTrackVehicle] = []
