@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-import logging
 from typing import Any
 from urllib.parse import parse_qs, quote, urlparse
 
@@ -22,8 +21,6 @@ from .models import (
 )
 
 API_BASE_URL = "https://api2.fleet.scorpiontrack.com/v1"
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class ScorpionTrackClient:
@@ -53,7 +50,6 @@ class ScorpionTrackClient:
         """Extract a ScorpionTrack token from a raw token or shared URL."""
         cleaned = value.strip()
         if not cleaned:
-            _LOGGER.warning("ScorpionTrack share setup was attempted without a token")
             raise ScorpionTrackInvalidTokenError("No share token supplied")
 
         if "://" not in cleaned:
@@ -62,10 +58,6 @@ class ScorpionTrackClient:
         parsed = urlparse(cleaned)
         token = parse_qs(parsed.query).get("token", [None])[0]
         if not token:
-            _LOGGER.warning(
-                "ScorpionTrack shared URL did not contain a token parameter (path=%s)",
-                parsed.path,
-            )
             raise ScorpionTrackInvalidTokenError(
                 "Shared URL does not contain a token parameter"
             )
@@ -75,102 +67,89 @@ class ScorpionTrackClient:
     async def async_get_share(self) -> ScorpionTrackShare:
         """Fetch the latest shared-location payload."""
         url = f"{self._base_url}/location-shares/{quote(self._token, safe='')}/view"
-        _LOGGER.debug(
-            "Fetching ScorpionTrack shared location for token %s",
-            _mask_token(self._token),
-        )
+        request_error: ScorpionTrackConnectionError | None = None
 
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session.get(url) as response:
                     if response.status in (401, 403):
-                        _LOGGER.warning(
-                            "ScorpionTrack rejected shared-location token %s with HTTP %s",
-                            _mask_token(self._token),
-                            response.status,
-                        )
                         raise ScorpionTrackInvalidTokenError("Share token was rejected")
                     if response.status == 404:
-                        _LOGGER.warning(
-                            "ScorpionTrack shared-location token %s no longer resolves (HTTP 404)",
-                            _mask_token(self._token),
-                        )
                         raise ScorpionTrackShareUnavailableError(
                             "Shared location was not found"
                         )
                     if response.status >= 400:
-                        _LOGGER.warning(
-                            "ScorpionTrack shared-location token %s returned unexpected HTTP %s",
-                            _mask_token(self._token),
-                            response.status,
-                        )
                         raise ScorpionTrackConnectionError(
                             f"Unexpected HTTP status {response.status}"
                         )
 
                     payload = await response.json(content_type=None)
-        except TimeoutError as err:
-            _LOGGER.warning(
-                "Timed out contacting ScorpionTrack for shared-location token %s",
-                _mask_token(self._token),
+        except TimeoutError:
+            request_error = ScorpionTrackConnectionError(
+                "Timed out contacting ScorpionTrack"
             )
-            raise ScorpionTrackConnectionError("Timed out contacting ScorpionTrack") from err
-        except ClientError as err:
-            _LOGGER.warning(
-                "Error contacting ScorpionTrack for shared-location token %s: %s",
-                _mask_token(self._token),
-                err,
+        except ClientError:
+            request_error = ScorpionTrackConnectionError(
+                "Failed to contact ScorpionTrack"
             )
-            raise ScorpionTrackConnectionError("Failed to contact ScorpionTrack") from err
-        except ValueError as err:
-            _LOGGER.warning(
-                "ScorpionTrack returned invalid JSON for shared-location token %s",
-                _mask_token(self._token),
+        except ValueError:
+            request_error = ScorpionTrackConnectionError(
+                "ScorpionTrack returned invalid JSON"
             )
-            raise ScorpionTrackConnectionError("ScorpionTrack returned invalid JSON") from err
+
+        # Avoid retaining URL-bearing request exceptions as context.
+        if request_error is not None:
+            raise request_error
 
         try:
-            share = self._parse_share(payload)
-        except (KeyError, TypeError, ValueError) as err:
-            _LOGGER.warning(
-                "ScorpionTrack returned malformed shared-location data for token %s: %s",
-                _mask_token(self._token),
-                err,
-            )
-            raise ScorpionTrackShareUnavailableError(
-                "Shared location returned malformed data"
-            ) from err
+            return self._parse_share(payload)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            pass
 
-        _LOGGER.debug(
-            "Fetched ScorpionTrack shared location %s for token %s with %s vehicle(s)",
-            share.id,
-            _mask_token(self._token),
-            len(share.vehicles),
+        # Parsing errors can contain values from the response payload.
+        raise ScorpionTrackConnectionError(
+            "ScorpionTrack returned malformed shared-location data"
         )
-        return share
 
-    def _parse_share(self, payload: dict[str, Any]) -> ScorpionTrackShare:
+    def _parse_share(self, payload: object) -> ScorpionTrackShare:
         """Convert the API payload into structured data."""
-        share_data = payload.get("data")
-        if not isinstance(share_data, dict):
-            _LOGGER.warning(
-                "ScorpionTrack shared-location token %s returned no active share payload",
-                _mask_token(self._token),
-            )
+        if not isinstance(payload, dict):
+            raise TypeError("Payload is not an object")
+        if "data" not in payload:
+            raise KeyError("data")
+
+        share_data = payload["data"]
+        if share_data is None:
             raise ScorpionTrackShareUnavailableError(
                 "Shared location is expired, revoked, or empty"
             )
+        if not isinstance(share_data, dict):
+            raise TypeError("Share data is not an object")
 
-        user = share_data.get("user") or {}
-        owner_name = " ".join(
-            part for part in (user.get("first_name"), user.get("last_name")) if part
-        ) or None
-
-        vehicles = tuple(
-            self._parse_vehicle(vehicle_data)
-            for vehicle_data in share_data.get("vehicles", [])
-            if isinstance(vehicle_data, dict)
+        user_data = share_data.get("user")
+        if user_data is None:
+            user: dict[str, Any] = {}
+        elif isinstance(user_data, dict):
+            user = user_data
+        else:
+            raise TypeError("Share user is not an object")
+        owner_name = (
+            " ".join(
+                part for part in (user.get("first_name"), user.get("last_name")) if part
+            )
+            or None
         )
+
+        if "vehicles" not in share_data:
+            raise KeyError("vehicles")
+        vehicles_data = share_data["vehicles"]
+        if not isinstance(vehicles_data, list):
+            raise TypeError("Share vehicles is not a list")
+        vehicles: list[ScorpionTrackVehicle] = []
+        for vehicle_data in vehicles_data:
+            if not isinstance(vehicle_data, dict):
+                raise TypeError("Share vehicle is not an object")
+            vehicles.append(self._parse_vehicle(vehicle_data))
 
         return ScorpionTrackShare(
             id=int(share_data["id"]),
@@ -180,12 +159,18 @@ class ScorpionTrackClient:
             distance_units=str(user.get("distance_units") or "km"),
             created_at=_parse_datetime(share_data.get("created_at")),
             expires_at=_parse_datetime(share_data.get("expires_at"), assume_utc=True),
-            vehicles=vehicles,
+            vehicles=tuple(vehicles),
         )
 
     def _parse_vehicle(self, vehicle_data: dict[str, Any]) -> ScorpionTrackVehicle:
         """Parse a shared vehicle."""
-        latest_position = vehicle_data.get("latest_position") or {}
+        latest_position_data = vehicle_data.get("latest_position")
+        if latest_position_data is None:
+            latest_position: dict[str, Any] = {}
+        elif isinstance(latest_position_data, dict):
+            latest_position = latest_position_data
+        else:
+            raise TypeError("Latest position is not an object")
         position = ScorpionTrackPosition(
             latitude=_to_float(latest_position.get("lat")),
             longitude=_to_float(latest_position.get("lng")),
@@ -266,13 +251,3 @@ def _parse_datetime(value: Any, *, assume_utc: bool = False) -> datetime | None:
         return datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
         return None
-
-
-def _mask_token(value: str, *, visible: int = 4) -> str:
-    """Return a lightly redacted token for logging."""
-    cleaned = value.strip()
-    if not cleaned:
-        return "<empty>"
-    if len(cleaned) <= visible * 2:
-        return "*" * len(cleaned)
-    return f"{cleaned[:visible]}...{cleaned[-visible:]}"
