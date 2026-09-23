@@ -17,7 +17,5 @@
   <rect x="44" y="39" width="116" height="112" rx="20" fill="#102647" stroke="url(#accent)" stroke-width="4"/>
   <path d="M102 57c-20 0-35 15-35 35 0 24 35 48 35 48s35-24 35-48c0-20-15-35-35-35z" fill="none" stroke="url(#accent)" stroke-width="5"/>
   <circle cx="102" cy="91" r="11" fill="#D3FBFF"/>
-  <text x="194" y="91" fill="#F5F9FF" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700">pyscorpiontrack</text>
-  <text x="197" y="130" fill="#9EE4EC" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">Shared location links for Python</text>
-  <path d="M197 148h126" stroke="url(#accent)" stroke-width="4" stroke-linecap="round"/>
+  <text x="194" y="112" fill="#F5F9FF" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700">pyscorpiontrack</text>
 </svg>
