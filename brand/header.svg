@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="190" viewBox="0 0 1000 190" role="img" aria-labelledby="title desc">
+  <title id="title">pyscorpiontrack</title>
+  <desc id="desc">A shared location pin beside the package name.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#0B1730"/>
+      <stop offset="1" stop-color="#172B52"/>
+    </linearGradient>
+    <linearGradient id="accent" x2="1" y2="1">
+      <stop stop-color="#42D8E8"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="190" rx="24" fill="url(#background)"/>
+  <path d="M760 0h240v190H680z" fill="#233A68" opacity=".28"/>
+  <path d="M827 0h173v190H748z" fill="#A78BFA" opacity=".06"/>
+  <rect x="44" y="39" width="116" height="112" rx="20" fill="#102647" stroke="url(#accent)" stroke-width="4"/>
+  <path d="M102 57c-20 0-35 15-35 35 0 24 35 48 35 48s35-24 35-48c0-20-15-35-35-35z" fill="none" stroke="url(#accent)" stroke-width="5"/>
+  <circle cx="102" cy="91" r="11" fill="#D3FBFF"/>
+  <text x="194" y="91" fill="#F5F9FF" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="700">pyscorpiontrack</text>
+  <text x="197" y="130" fill="#9EE4EC" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="500">Shared location links for Python</text>
+  <path d="M197 148h126" stroke="url(#accent)" stroke-width="4" stroke-linecap="round"/>
+</svg>
