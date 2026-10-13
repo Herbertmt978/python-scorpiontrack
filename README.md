@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Herbertmt978/python-scorpiontrack/main/brand/header.svg" alt="pyscorpiontrack wordmark with a shared location pin" width="760">
+<img src="https://raw.githubusercontent.com/Herbertmt978/python-scorpiontrack/main/brand/header.svg" alt="pyscorpiontrack: a code card and shared link resolving to a location pin" width="880">
 
 # pyscorpiontrack
 
